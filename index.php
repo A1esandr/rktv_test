@@ -22,13 +22,8 @@ if(file_exists('./files/'.$_FILES['userfile']['name'])){
 $init_xml = simplexml_load_file('./files/'.$_FILES['userfile']['name']);
   
 $link = mysqli_connect($host,$user,$password,$db) or die("Error " . mysqli_error($link));
-$query = "SELECT COUNT(*) FROM `users`" or die("Error in the consult.." . mysqli_error($link));
-$result = mysqli_query($link, $query);
-while($row = mysqli_fetch_array($result)) {
-  $all =$row[0];
-}
 
-$updated=0;
+$updated = 0;
 
 for($i=0;$i<count($init_xml);$i++){
   
@@ -67,6 +62,9 @@ $query = "UPDATE `users` SET `updated`= 0" or die("Error in the consult.." . mys
 $result = mysqli_query($link, $query);
 
 mysqli_close($link);
+
+$all = $updated + $deleted;
+
   $message = "Обработано записей: ".$all."\n<br>";
   $message .= "Обновлено записей: ".$updated."\n<br>";
   $message .= "Удалено записей: ".$deleted."\n<br>";
