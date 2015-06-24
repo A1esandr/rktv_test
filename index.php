@@ -19,39 +19,86 @@ if(isset($_POST["submit"])) {
     include 'config.php';
     if(file_exists('./files/'.$_FILES['userfile']['name'])){
       
-      $init_xml = simplexml_load_file('./files/'.$_FILES['userfile']['name']);
-        
-      $link = mysqli_connect($host,$user,$password,$db) or die("Error " . mysqli_error($link));
-      
-      $updated = 0;
-      
-      for($i=0;$i<count($init_xml);$i++){
-        
-        $cur_login = $init_xml->user[$i]->login;
-        $cur_password = $init_xml->user[$i]->password;
-        $cur_email = $init_xml->user[$i]->email;
-        $cur_name = $init_xml->user[$i]->name;
+      $file_type = substr($_FILES['userfile']['name'], -3,3);
+      if($file_type=="xml"){
+        $init_xml = simplexml_load_file('./files/'.$_FILES['userfile']['name']);
           
+        $link = mysqli_connect($host,$user,$password,$db) or die("Error " . mysqli_error($link));
         
-        $query = "SELECT COUNT(*) FROM `users` WHERE users.login = '$cur_login'" or die("Error in the consult.." . mysqli_error($link));
-        $result = mysqli_query($link, $query);
-        while($row = mysqli_fetch_array($result)) {
-          $quant = $row[0];
-        }
-        if($quant==1) { 
+        $updated = 0;
+        
+        for($i=0;$i<count($init_xml);$i++){
           
-          $query = "UPDATE `users` SET `name`= '$cur_name',`email`= '$cur_email',`updated`= 1 WHERE users.login = '$cur_login'" or die("Error in the consult.." . mysqli_error($link));
+          $cur_login = $init_xml->user[$i]->login;
+          $cur_password = $init_xml->user[$i]->password;
+          $cur_email = $init_xml->user[$i]->email;
+          $cur_name = $init_xml->user[$i]->name;
+            
+          
+          $query = "SELECT COUNT(*) FROM `users` WHERE users.login = '$cur_login'" or die("Error in the consult.." . mysqli_error($link));
           $result = mysqli_query($link, $query);
+          while($row = mysqli_fetch_array($result)) {
+            $quant = $row[0];
+          }
+          if($quant==1) { 
             
-        } else {
-            
-          $query = "INSERT INTO users (login, password, name, email, updated) VALUES 
-          ('$cur_login', '$cur_password', '$cur_name', '$cur_email', 1)" or die("Error in the consult.." . mysqli_error($link));
-          $result = mysqli_query($link, $query); 
-            
+            $query = "UPDATE `users` SET `name`= '$cur_name',`email`= '$cur_email',`updated`= 1 WHERE users.login = '$cur_login'" or die("Error in the consult.." . mysqli_error($link));
+            $result = mysqli_query($link, $query);
+              
+          } else {
+              
+            $query = "INSERT INTO users (login, password, name, email, updated) VALUES 
+            ('$cur_login', '$cur_password', '$cur_name', '$cur_email', 1)" or die("Error in the consult.." . mysqli_error($link));
+            $result = mysqli_query($link, $query); 
+              
+          }
+              
+          $updated++;
         }
+      } else if($file_type=="csv") {
+        
+        $delim = ";";
+        $n = 200000;
+        
+        if(($handle = fopen("./files/".$_FILES['userfile']['name'],"r"))!==FALSE){
+          
+          $link = mysqli_connect($host,$user,$password,$db) or die("Error " . mysqli_error($link));
             
-        $updated++;
+          $updated = 0;
+          
+          while(($csv = fgetcsv($handle,$n,$delim))!==FALSE){
+            
+            
+
+            $cur_login = $csv[0];
+            $cur_password = $csv[1];
+            $cur_name = $csv[2];
+            $cur_email = $csv[3];
+              
+            $query = "SELECT COUNT(*) FROM `users` WHERE users.login = '$cur_login'" or die("Error in the consult.." . mysqli_error($link));
+            $result = mysqli_query($link, $query);
+            while($row = mysqli_fetch_array($result)) {
+              $quant = $row[0];
+            }
+            if($quant==1) { 
+              
+              $query = "UPDATE `users` SET `name`= '$cur_name',`email`= '$cur_email',`updated`= 1 WHERE users.login = '$cur_login'" or die("Error in the consult.." . mysqli_error($link));
+              $result = mysqli_query($link, $query);
+                
+            } else {
+                
+              $query = "INSERT INTO users (login, password, name, email, updated) VALUES 
+              ('$cur_login', '$cur_password', '$cur_name', '$cur_email', 1)" or die("Error in the consult.." . mysqli_error($link));
+              $result = mysqli_query($link, $query); 
+                
+            }
+                
+            $updated++;
+          }
+        fclose($handle);
+        }
+      } else {
+        die("Загруженный файл не является ни xml, ни csv файлом");
       }
       
       $query = "DELETE FROM `users` WHERE users.updated = 0" or die("Error in the consult.." . mysqli_error($link));
