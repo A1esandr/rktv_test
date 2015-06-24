@@ -67,9 +67,7 @@ if(isset($_POST["submit"])) {
           $updated = 0;
           
           while(($csv = fgetcsv($handle,$n,$delim))!==FALSE){
-            
-            
-
+  
             $cur_login = $csv[0];
             $cur_password = $csv[1];
             $cur_name = $csv[2];
