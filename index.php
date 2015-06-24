@@ -29,16 +29,33 @@ while($row = mysqli_fetch_array($result)) {
 }
 
 $updated=0;
+
 for($i=0;$i<count($init_xml);$i++){
   
   $cur_login = $init_xml->user[$i]->login;
-  //$cur_email = $init_xml->user[$i]->email;
-  //$cur_name = $init_xml->user[$i]->name;
-  $cur_email = $init_xml->user[$i]->login."@ex.com";
-  $cur_name = $init_xml->user[$i]->login."-name";
+  $cur_password = $init_xml->user[$i]->password;
+  $cur_email = $init_xml->user[$i]->email;
+  $cur_name = $init_xml->user[$i]->name;
+  
+
+$query = "SELECT COUNT(*) FROM `users` WHERE users.login = '$cur_login'" or die("Error in the consult.." . mysqli_error($link));
+$result = mysqli_query($link, $query);
+while($row = mysqli_fetch_array($result)) {
+  $quant =$row[0];
+}
+  if($quant==1) { 
   
 $query = "UPDATE `users` SET `name`= '$cur_name',`email`= '$cur_email',`updated`= 1 WHERE users.login = '$cur_login'" or die("Error in the consult.." . mysqli_error($link));
 $result = mysqli_query($link, $query);
+    
+  } else {
+    
+$query = "INSERT INTO users (login, password, name, email, updated) VALUES 
+('$cur_login', '$cur_password', '$cur_name', '$cur_email', 1)" or die("Error in the consult.." . mysqli_error($link));
+$result = mysqli_query($link, $query); 
+    
+  }
+    
 $updated++;
 }
 
