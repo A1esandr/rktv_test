@@ -20,7 +20,10 @@ if(isset($_POST["submit"])) {
  /* Если файл успешно выгружен производим действия с таблицей */  
     include 'config.php';
     if(file_exists('./files/'.$_FILES['userfile']['name'])){
-  
+      
+    /* Создаем массив для обновленных либо вновь созданных логинов */  
+    $present_logins = array();
+    
   /* Определяем тип выгруженного файла по трем последним символам в названии */    
       $file_type = substr($_FILES['userfile']['name'], -3,3);
       
@@ -28,9 +31,6 @@ if(isset($_POST["submit"])) {
         $init_xml = simplexml_load_file('./files/'.$_FILES['userfile']['name']);
           
         $link = mysqli_connect($host,$user,$password,$db) or die("Error " . mysqli_error($link));
-        
-        /* Переменная для подсчета количества произведенных обновлений или созданий */
-        $updated = 0;
         
         for($i=0;$i<count($init_xml);$i++){
           
@@ -45,20 +45,37 @@ if(isset($_POST["submit"])) {
           while($row = mysqli_fetch_array($result)) {
             $quant = $row[0];
           }
-          if($quant==1) { 
-        /* Если пользователь есть обновляем данные о нем */    
-            $query = "UPDATE `users` SET `name`= '$cur_name',`email`= '$cur_email',`updated`= 1 WHERE users.login = '$cur_login'" or die("Error in the consult.." . mysqli_error($link));
+          
+          if($quant==1) {
+  
+            $query = "SELECT COUNT * FROM `users` WHERE users.login = '$cur_login'" or die("Error in the consult.." . mysqli_error($link));
             $result = mysqli_query($link, $query);
+            while($row = mysqli_fetch_array($result)) {
               
+              /* Проверяем наличие изменений в записи */
+              $updated_now = 0;
+              if($row['name'] != $cur_name){
+                $query = "UPDATE `users` SET `name`= '$cur_name' WHERE users.login = '$cur_login'" or die("Error in the consult.." . mysqli_error($link));
+                $result = mysqli_query($link, $query);
+                $updated_now = 1;
+                array_push($present_logins,$cur_login); 
+              } else if($row['email'] != $cur_email){
+                $query = "UPDATE `users` SET `email`= '$cur_email' WHERE users.login = '$cur_login'" or die("Error in the consult.." . mysqli_error($link));
+                $result = mysqli_query($link, $query);
+                if($updated_now == 0){
+                array_push($present_logins,$cur_login);
+                }
+              }
+            }
+
           } else {
         /* Если нет - создаем такого пользователя */      
-            $query = "INSERT INTO users (login, password, name, email, updated) VALUES 
-            ('$cur_login', '$cur_password', '$cur_name', '$cur_email', 1)" or die("Error in the consult.." . mysqli_error($link));
+            $query = "INSERT INTO users (login, password, name, email) VALUES 
+            ('$cur_login', '$cur_password', '$cur_name', '$cur_email')" or die("Error in the consult.." . mysqli_error($link));
             $result = mysqli_query($link, $query); 
-              
+            array_push($present_logins,$cur_login);  
           }
               
-          $updated++;
         }
       } else if($file_type=="csv") {
    /* Если файл является csv */     
@@ -68,9 +85,7 @@ if(isset($_POST["submit"])) {
         if(($handle = fopen("./files/".$_FILES['userfile']['name'],"r"))!==FALSE){
           
           $link = mysqli_connect($host,$user,$password,$db) or die("Error " . mysqli_error($link));
-            
-          $updated = 0;
-          
+  
           while(($csv = fgetcsv($handle,$n,$delim))!==FALSE){
   
   /* Предполагаем что запись в каждой строке csv файла идет в порядке login;password;name;email; */
@@ -85,19 +100,32 @@ if(isset($_POST["submit"])) {
               $quant = $row[0];
             }
             if($quant==1) { 
-              
-              $query = "UPDATE `users` SET `name`= '$cur_name',`email`= '$cur_email',`updated`= 1 WHERE users.login = '$cur_login'" or die("Error in the consult.." . mysqli_error($link));
+              $query = "SELECT COUNT * FROM `users` WHERE users.login = '$cur_login'" or die("Error in the consult.." . mysqli_error($link));
               $result = mysqli_query($link, $query);
-                
+              while($row = mysqli_fetch_array($result)) {
+                $updated_now = 0;
+                if($row['name'] != $cur_name){
+                  $query = "UPDATE `users` SET `name`= '$cur_name' WHERE users.login = '$cur_login'" or die("Error in the consult.." . mysqli_error($link));
+                  $result = mysqli_query($link, $query);
+                  $updated_now = 1;
+                  array_push($present_logins,$cur_login); 
+                } else if($row['email'] != $cur_email){
+                  $query = "UPDATE `users` SET `email`= '$cur_email' WHERE users.login = '$cur_login'" or die("Error in the consult.." . mysqli_error($link));
+                  $result = mysqli_query($link, $query);
+                  if($updated_now == 0){
+                  array_push($present_logins,$cur_login);
+                  }
+                }
+              }
+  
             } else {
-                
-              $query = "INSERT INTO users (login, password, name, email, updated) VALUES 
-              ('$cur_login', '$cur_password', '$cur_name', '$cur_email', 1)" or die("Error in the consult.." . mysqli_error($link));
+          /* Если нет - создаем такого пользователя */      
+              $query = "INSERT INTO users (login, password, name, email) VALUES 
+              ('$cur_login', '$cur_password', '$cur_name', '$cur_email')" or die("Error in the consult.." . mysqli_error($link));
               $result = mysqli_query($link, $query); 
-                
+              
+              array_push($present_logins,$cur_login);  
             }
-                
-            $updated++;
           }
         fclose($handle);
         }
@@ -105,21 +133,23 @@ if(isset($_POST["submit"])) {
         die("Загруженный файл не является ни xml, ни csv файлом");
       }
       
-      /*  Удаляем пользователей, которых не было в файле */
-      $query = "DELETE FROM `users` WHERE users.updated = 0" or die("Error in the consult.." . mysqli_error($link));
+      /*  Удаляем пользователей, которых нет в массиве обновленных */
+      $deleted = 0;
+      $query = "SELECT * FROM `users`" or die("Error in the consult.." . mysqli_error($link));
       $result = mysqli_query($link, $query);
-      
-      /* Записываем количество удаленных пользователей */
-      $deleted = mysqli_affected_rows($link);
-      
-      
-      /*  Сбрасываем метку обновления - завершение действий с таблицей */  
-      $query = "UPDATE `users` SET `updated`= 0" or die("Error in the consult.." . mysqli_error($link));
-      $result = mysqli_query($link, $query);
+      while($row = mysqli_fetch_array($result)) {
+        $now_login = $row['login'];
+        if(array_search($now_login,$updated_logins) == FALSE){
+          $query = "DELETE FROM `users` WHERE users.login = '$now_login'" or die("Error in the consult.." . mysqli_error($link));
+          $result = mysqli_query($link, $query);
+          $deleted++;
+        }
+      }
       
       mysqli_close($link);
       
       /* Общее количество обработанных записей */
+      $updated = count($updated_logins);
       $all = $updated + $deleted;
       
       $message = "Обработано записей: ".$all."\n<br>";
