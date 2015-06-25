@@ -140,7 +140,7 @@ if(isset($_POST["submit"])) {
       while($row = mysqli_fetch_array($result)) {
         $now_login = $row['login'];
         if(array_search($now_login,$updated_logins) == FALSE){
-          $query = "DELETE FROM `users` WHERE users.login = '$now_login'" or die("Error in the consult.." . mysqli_error($link));
+          $query = "DELETE * FROM `users` WHERE users.login = '$now_login'" or die("Error in the consult.." . mysqli_error($link));
           $result = mysqli_query($link, $query);
           $deleted++;
         }
