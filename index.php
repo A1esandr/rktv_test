@@ -139,7 +139,7 @@ if(isset($_POST["submit"])) {
       $result = mysqli_query($link, $query);
       while($row = mysqli_fetch_array($result)) {
         $now_login = $row['login'];
-        if(array_search($now_login,$updated_logins) == FALSE){
+        if(array_search($now_login,$present_logins) == FALSE){
           $query = "DELETE * FROM `users` WHERE users.login = '$now_login'" or die("Error in the consult.." . mysqli_error($link));
           $result = mysqli_query($link, $query);
           $deleted++;
@@ -149,7 +149,7 @@ if(isset($_POST["submit"])) {
       mysqli_close($link);
       
       /* Общее количество обработанных записей */
-      $updated = count($updated_logins);
+      $updated = count($present_logins);
       $all = $updated + $deleted;
       
       $message = "Обработано записей: ".$all."\n<br>";
