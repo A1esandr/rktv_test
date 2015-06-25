@@ -14,25 +14,39 @@ error_reporting(-1);
 <?php 
 /* Производим все действия с таблицей только при наличии отправки с формы */
 if(isset($_POST["submit"])) {
+  
+  
+  
+  
 
 /* Выгрузка файла с компьютера пользователя */
   $uploaddir = 'files/';
   $uploadfile = $uploaddir . basename($_FILES['userfile']['name']);
+  
+  
+  
   
   if (move_uploaded_file($_FILES['userfile']['tmp_name'], $uploadfile)) {
     echo "Файл корректен и был успешно загружен.\n<br>";
     
  /* Если файл успешно выгружен производим действия с таблицей */  
     include 'config.php';
+    
+    
+    
+    
     if(file_exists('./files/'.$_FILES['userfile']['name'])){
       
-    /* Создаем массив для существующих логинов, массив для обновленных логинов */  
+    /* Создаем массив для обновленных либо вновь созданных логинов */  
     $present_logins = array();
     $updated_logins = array();
     
   /* Определяем тип выгруженного файла по трем последним символам в названии */    
       $file_type = substr($_FILES['userfile']['name'], -3,3);
       
+      try {
+        
+        
       if($file_type=="xml"){
         $init_xml = simplexml_load_file('./files/'.$_FILES['userfile']['name']);
           
@@ -140,19 +154,31 @@ if(isset($_POST["submit"])) {
       } else {
         die("Загруженный файл не является ни xml, ни csv файлом");
       }
-      
+       
+        
+        
+        
+      } catch (Exception $e) {
+          echo 'Поймано исключение: ',  $e->getMessage(), "\n";
+      } finally {
+        
+        
+        
       /*  Удаляем пользователей, которых нет в массиве обновленных */
       $deleted = 0;
       $query = "SELECT * FROM `users`" or die("Error in the consult.." . mysqli_error($link));
       $result = mysqli_query($link, $query);
       while($row = mysqli_fetch_array($result)) {
+        
+        
         $now_login = $row['login'];
-        /* Проверяем наличие логин в массиве существующих в файле но не обновленных и в массиве обновленных */
         if((array_search($now_login,$present_logins) == FALSE)&&(array_search($now_login,$updated_logins) == FALSE)){
           $query = "DELETE FROM `users` WHERE users.login = '$now_login'" or die("Error in the consult.." . mysqli_error($link));
           mysqli_query($link, $query);
           $deleted++;
         }
+        
+        
       }
       
       mysqli_close($link);
@@ -170,12 +196,27 @@ if(isset($_POST["submit"])) {
       
       /* Вывод отчета на экран */
       echo $message;
+        
+        
+        
+      }
+        
+        
     }
-    
+ 
+      
+      
+      
+      
   } else {
       echo "Нет загруженного файла!\n";
   }
-  
+ 
+    
+    
+    
+    
+    
 }
   ?>
   
