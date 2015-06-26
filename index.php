@@ -90,7 +90,7 @@ if(isset($_POST["submit"])) {
           } else {
         /* Если нет - создаем такого пользователя */
             $data = Array ("login" => $cur_login,
-                           "password" => $cur_pass,
+                           "password" => $cur_password,
                            "name" => $cur_name,
                            "email" => $cur_email
             );
@@ -149,7 +149,7 @@ if(isset($_POST["submit"])) {
               } else {
             /* Если нет - создаем такого пользователя */
                 $data = Array ("login" => $cur_login,
-                               "password" => $cur_pass,
+                               "password" => $cur_password,
                                "name" => $cur_name,
                                "email" => $cur_email
                 );
@@ -185,9 +185,9 @@ if(isset($_POST["submit"])) {
           
             $now_login = $user['login'];
             if(
-                (array_search($now_login,$present_logins) == FALSE)&&
-                (array_search($now_login,$updated_logins) == FALSE)&&
-                (array_search($now_login,$created_logins) == FALSE)
+                (array_search($now_login,$present_logins) === FALSE)&&
+                (array_search($now_login,$updated_logins) === FALSE)&&
+                (array_search($now_login,$created_logins) === FALSE)
             ){
               
               $db->where('login', $now_login);
