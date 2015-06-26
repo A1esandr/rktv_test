@@ -35,6 +35,8 @@ if(isset($_POST["submit"])) {
     $present_logins = array();
     /* Создаем массив для существующих и обновленных либо вновь созданных логинов */
     $updated_logins = array();
+    /* Создаем массив для впервые созданных логинов */
+    $created_logins = array();
     
   /* Определяем тип выгруженного файла по трем последним символам в названии */    
       $file_type = substr($_FILES['userfile']['name'], -3,3);
@@ -94,7 +96,7 @@ if(isset($_POST["submit"])) {
             );
             $db->insert ('users', $data);
             
-            array_push($updated_logins,$cur_login);  
+            array_push($created_logins,$cur_login);  
           }
               
         }
@@ -153,7 +155,7 @@ if(isset($_POST["submit"])) {
                 );
                 $db->insert ('users', $data);
                 
-                array_push($updated_logins,$cur_login);  
+                array_push($created_logins,$cur_login);  
               }
           
           }
@@ -182,7 +184,11 @@ if(isset($_POST["submit"])) {
         foreach ($users as $user) { 
           
             $now_login = $user['login'];
-            if((array_search($now_login,$present_logins) == FALSE)&&(array_search($now_login,$updated_logins) == FALSE)){
+            if(
+                (array_search($now_login,$present_logins) == FALSE)&&
+                (array_search($now_login,$updated_logins) == FALSE)&&
+                (array_search($now_login,$created_logins) == FALSE)
+            ){
               
               $db->where('login', $now_login);
               if($db->delete('users')) $deleted++;
@@ -194,10 +200,12 @@ if(isset($_POST["submit"])) {
 
       /* Общее количество обработанных записей */
       $updated = count($updated_logins);
-      $all = $updated + $deleted;
+      $created = count($created_logins);
+      $all = $updated + $created + $deleted;
       
       $message = "Обработано записей: ".$all."\n<br>";
       $message .= "Обновлено записей: ".$updated."\n<br>";
+      $message .= "Создано записей: ".$created."\n<br>";
       $message .= "Удалено записей: ".$deleted."\n<br>";
       
       /* Отправка отчета на почту */
