@@ -1,18 +1,14 @@
 <?php 
-ini_set('display_errors',1);
-ini_set('display_startup_errors',1);
-error_reporting(-1);
-?>
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>Rktv</title>
-  </head>
-<body>
-  
-<?php 
-/* Производим все действия с таблицей только при наличии отправки с формы */
+require_once('MysqliDb.php');
+require_once('config.php');
+error_reporting(E_ALL);
+
+$data = array();
+
+function mainFunction () {
+    global $db;
+
+/* Производим все действия с таблицей только при наличии отправки с формы BEGIN */
 if(isset($_POST["submit"])) {
   
   
@@ -25,88 +21,90 @@ if(isset($_POST["submit"])) {
   
   
   
-  
+  /* Если файл успешно выгружен производим действия с таблицей BEGIN */ 
   if (move_uploaded_file($_FILES['userfile']['tmp_name'], $uploadfile)) {
     echo "Файл корректен и был успешно загружен.\n<br>";
     
- /* Если файл успешно выгружен производим действия с таблицей */  
-    include 'config.php';
+  
     
     
-    
-    
+    /* Проверка на наличие выгруженнго файла BEGIN */
     if(file_exists('./files/'.$_FILES['userfile']['name'])){
       
-    /* Создаем массив для обновленных либо вновь созданных логинов */  
+    /* Создаем массив для существующих, но не обновленных логинов */  
     $present_logins = array();
+    /* Создаем массив для существующих и обновленных либо вновь созданных логинов */
     $updated_logins = array();
     
   /* Определяем тип выгруженного файла по трем последним символам в названии */    
       $file_type = substr($_FILES['userfile']['name'], -3,3);
       
+      
       try {
         
         
       if($file_type=="xml"){
+        
         $init_xml = simplexml_load_file('./files/'.$_FILES['userfile']['name']);
           
-        $link = mysqli_connect($host,$user,$password,$db) or die("Error " . mysqli_error($link));
-        
         for($i=0;$i<count($init_xml);$i++){
           
           $cur_login = $init_xml->user[$i]->login;
           $cur_password = $init_xml->user[$i]->password;
           $cur_email = $init_xml->user[$i]->email;
           $cur_name = $init_xml->user[$i]->name;
-            
-        /* Проверяем наличие пользователя с таким логином в таблице */  
-          $query = "SELECT COUNT(*) FROM `users` WHERE users.login = '$cur_login'" or die("Error in the consult.." . mysqli_error($link));
-          $result = mysqli_query($link, $query);
-          while($row = mysqli_fetch_array($result)) {
-            $quant = $row[0];
-          }
-          
-          if($quant==1) {
+         
+         /* Проверяем наличие пользователя с таким логином в таблице */
+         $db->where ('login', $cur_login); 
+         $user = $db->get('users');
+         if ($db->count > 0) {
   
-            $query = "SELECT * FROM `users` WHERE users.login = '$cur_login'" or die("Error in the consult.." . mysqli_error($link));
-            $result = mysqli_query($link, $query);
-            while($row = mysqli_fetch_array($result)) {
-              
               /* Проверяем наличие изменений в записи */
               $updated_now = 0;
-              if($row['name'] != $cur_name){
-                $query = "UPDATE `users` SET `name`= '$cur_name' WHERE users.login = '$cur_login'" or die("Error in the consult.." . mysqli_error($link));
-                $result = mysqli_query($link, $query);
+              if((!empty($cur_name))&&($user['name'] != $cur_name)){
+                $data = Array (
+                    'name' => $cur_name
+                );
+                $db->where ('login', $cur_login);
+                $db->update ('users', $data);
+                
                 $updated_now = 1;
                 array_push($updated_logins,$cur_login); 
-              } else if($row['email'] != $cur_email){
-                $query = "UPDATE `users` SET `email`= '$cur_email' WHERE users.login = '$cur_login'" or die("Error in the consult.." . mysqli_error($link));
-                $result = mysqli_query($link, $query);
+              } else if((!empty($cur_email))&&($row['email'] != $cur_email)){
+                
+                $data = Array (
+                    'email' => $cur_email
+                );
+                $db->where ('login', $cur_login);
+                $db->update ('users', $data);
+                
                 if($updated_now == 0){
-                array_push($updated_logins,$cur_login);
+                  array_push($updated_logins,$cur_login);
                 }
               }
               array_push($present_logins,$cur_login);
-            }
+            
 
           } else {
-        /* Если нет - создаем такого пользователя */      
-            $query = "INSERT INTO users (login, password, name, email) VALUES 
-            ('$cur_login', '$cur_password', '$cur_name', '$cur_email')" or die("Error in the consult.." . mysqli_error($link));
-            $result = mysqli_query($link, $query); 
+        /* Если нет - создаем такого пользователя */
+            $data = Array ("login" => $cur_login,
+                           "password" => $cur_pass,
+                           "name" => $cur_name,
+                           "email" => $cur_email
+            );
+            $db->insert ('users', $data);
+            
             array_push($updated_logins,$cur_login);  
           }
               
         }
       } else if($file_type=="csv") {
-   /* Если файл является csv */     
+   /* Если файл является csv-файлом */     
         $delim = ";";
         $n = 200000;
         
         if(($handle = fopen("./files/".$_FILES['userfile']['name'],"r"))!==FALSE){
           
-          $link = mysqli_connect($host,$user,$password,$db) or die("Error " . mysqli_error($link));
-  
           while(($csv = fgetcsv($handle,$n,$delim))!==FALSE){
   
   /* Предполагаем что запись в каждой строке csv файла идет в порядке login;password;name;email; */
@@ -115,42 +113,53 @@ if(isset($_POST["submit"])) {
             $cur_name = $csv[2];
             $cur_email = $csv[3];
               
-            $query = "SELECT COUNT(*) FROM `users` WHERE users.login = '$cur_login'" or die("Error in the consult.." . mysqli_error($link));
-            $result = mysqli_query($link, $query);
-            while($row = mysqli_fetch_array($result)) {
-              $quant = $row[0];
-            }
-            if($quant==1) { 
-              $query = "SELECT COUNT * FROM `users` WHERE users.login = '$cur_login'" or die("Error in the consult.." . mysqli_error($link));
-              $result = mysqli_query($link, $query);
-              while($row = mysqli_fetch_array($result)) {
-                $updated_now = 0;
-                if($row['name'] != $cur_name){
-                  $query = "UPDATE `users` SET `name`= '$cur_name' WHERE users.login = '$cur_login'" or die("Error in the consult.." . mysqli_error($link));
-                  $result = mysqli_query($link, $query);
-                  $updated_now = 1;
-                  array_push($updated_logins,$cur_login); 
-                } else if($row['email'] != $cur_email){
-                  $query = "UPDATE `users` SET `email`= '$cur_email' WHERE users.login = '$cur_login'" or die("Error in the consult.." . mysqli_error($link));
-                  $result = mysqli_query($link, $query);
-                  if($updated_now == 0){
-                  array_push($updated_logins,$cur_login);
+            /* Проверяем наличие пользователя с таким логином в таблице */
+             $db->where ('login', $cur_login); 
+             $user = $db->get('users');
+             if ($db->count > 0) {
+      
+                  /* Проверяем наличие изменений в записи */
+                  $updated_now = 0;
+                  if((!empty($cur_name))&&($user['name'] != $cur_name)){
+                    $data = Array (
+                        'name' => $cur_name
+                    );
+                    $db->where ('login', $cur_login);
+                    $db->update ('users', $data);
+                    
+                    $updated_now = 1;
+                    array_push($updated_logins,$cur_login); 
+                  } else if((!empty($cur_email))&&($row['email'] != $cur_email)){
+                    
+                    $data = Array (
+                        'email' => $cur_email
+                    );
+                    $db->where ('login', $cur_login);
+                    $db->update ('users', $data);
+                    
+                    if($updated_now == 0){
+                      array_push($updated_logins,$cur_login);
+                    }
                   }
-                }
-                array_push($present_logins,$cur_login);
+                  array_push($present_logins,$cur_login);
+                
+    
+              } else {
+            /* Если нет - создаем такого пользователя */
+                $data = Array ("login" => $cur_login,
+                               "password" => $cur_pass,
+                               "name" => $cur_name,
+                               "email" => $cur_email
+                );
+                $db->insert ('users', $data);
+                
+                array_push($updated_logins,$cur_login);  
               }
-  
-            } else {
-          /* Если нет - создаем такого пользователя */      
-              $query = "INSERT INTO users (login, password, name, email) VALUES 
-              ('$cur_login', '$cur_password', '$cur_name', '$cur_email')" or die("Error in the consult.." . mysqli_error($link));
-              $result = mysqli_query($link, $query); 
-              
-              array_push($updated_logins,$cur_login);  
-            }
+          
           }
         fclose($handle);
         }
+        
       } else {
         die("Загруженный файл не является ни xml, ни csv файлом");
       }
@@ -166,23 +175,23 @@ if(isset($_POST["submit"])) {
         
       /*  Удаляем пользователей, которых нет в массиве обновленных */
       $deleted = 0;
-      $query = "SELECT * FROM `users`" or die("Error in the consult.." . mysqli_error($link));
-      $result = mysqli_query($link, $query);
-      while($row = mysqli_fetch_array($result)) {
-        
-        
-        $now_login = $row['login'];
-        if((array_search($now_login,$present_logins) == FALSE)&&(array_search($now_login,$updated_logins) == FALSE)){
-          $query = "DELETE FROM `users` WHERE users.login = '$now_login'" or die("Error in the consult.." . mysqli_error($link));
-          mysqli_query($link, $query);
-          $deleted++;
+      $now_login = FALSE;
+      
+      $users = $db->get('users');
+      if ($db->count > 0)
+        foreach ($users as $user) { 
+          
+            $now_login = $user['login'];
+            if((array_search($now_login,$present_logins) == FALSE)&&(array_search($now_login,$updated_logins) == FALSE)){
+              
+              $db->where('login', $now_login);
+              if($db->delete('users')) $deleted++;
+              
+            }
         }
-        
-        
-      }
       
-      mysqli_close($link);
       
+
       /* Общее количество обработанных записей */
       $updated = count($updated_logins);
       $all = $updated + $deleted;
@@ -203,7 +212,7 @@ if(isset($_POST["submit"])) {
         
         
     }
- 
+  /* Проверка на наличие выгруженнго файла END */
       
       
       
@@ -211,14 +220,30 @@ if(isset($_POST["submit"])) {
   } else {
       echo "Нет загруженного файла!\n";
   }
- 
+ /* Если файл успешно выгружен производим действия с таблицей END */ 
     
     
     
     
     
 }
-  ?>
+/* Производим все действия с таблицей только при наличии отправки с формы END */  
+
+    
+}
+
+$db = new MysqliDb (DB_SERVER, DB_USER, DB_PASS, DB_NAME);
+
+?>
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Rktv</title>
+  </head>
+<body>
+  
+  <?php mainFunction();?>
   
   <form method="post" enctype="multipart/form-data" action="/index.php">
     <input type="file" name="userfile" />
