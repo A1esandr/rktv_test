@@ -1,5 +1,6 @@
 <?php
-include 'config.php';
+require_once ('MysqliDb.php');
+require_once ('config.php');
 
 $link = mysqli_connect($host,$user,$password,$db) or die("Error " . mysqli_error($link));
 
