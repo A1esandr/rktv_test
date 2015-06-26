@@ -2,19 +2,17 @@
 require_once ('MysqliDb.php');
 require_once ('config.php');
 
-$link = mysqli_connect($host,$user,$password,$db) or die("Error " . mysqli_error($link));
+$db = new MysqliDb (DB_SERVER, DB_USER, DB_PASS, DB_NAME);
 
-$query = "CREATE TABLE
+$users = $db->rawQuery(
+"CREATE TABLE
     `users` (
         `login` CHAR(50) NOT NULL,
         `password` CHAR(150) NOT NULL,
         `name` CHAR(30) NOT NULL,
         `email` CHAR(50) NOT NULL,
         PRIMARY KEY(`login`)
-    )" or die("Error in the consult.." . mysqli_error($link));
-  
-$result = mysqli_query($link, $query);
+    )");
 
 echo 'ok';
-mysqli_close($link);
 ?>
