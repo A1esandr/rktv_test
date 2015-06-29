@@ -2,6 +2,7 @@
 require_once('MysqliDb.php');
 require_once('config.php');
 error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
 $data = array();
 
@@ -58,7 +59,7 @@ if(isset($_POST["submit"])) {
          
          /* Проверяем наличие пользователя с таким логином в таблице */
          $db->where ('login', $cur_login); 
-         $user = $db->get('users');
+         $user = $db->getOne('users');
          if ($db->count > 0) {
   
               /* Проверяем наличие изменений в записи */
@@ -72,7 +73,8 @@ if(isset($_POST["submit"])) {
                 
                 $updated_now = 1;
                 array_push($updated_logins,$cur_login); 
-              } else if((!empty($cur_email))&&($row['email'] != $cur_email)){
+              } 
+              if((!empty($cur_email))&&($user['email'] != $cur_email)){
                 
                 $data = Array (
                     'email' => $cur_email
@@ -117,7 +119,7 @@ if(isset($_POST["submit"])) {
               
             /* Проверяем наличие пользователя с таким логином в таблице */
              $db->where ('login', $cur_login); 
-             $user = $db->get('users');
+             $user = $db->getOne('users');
              if ($db->count > 0) {
       
                   /* Проверяем наличие изменений в записи */
@@ -131,7 +133,8 @@ if(isset($_POST["submit"])) {
                     
                     $updated_now = 1;
                     array_push($updated_logins,$cur_login); 
-                  } else if((!empty($cur_email))&&($row['email'] != $cur_email)){
+                  } 
+                  if((!empty($cur_email))&&($user['email'] != $cur_email)){
                     
                     $data = Array (
                         'email' => $cur_email
