@@ -51,10 +51,10 @@ if(isset($_POST["submit"])) {
           
         for($i=0;$i<count($init_xml);$i++){
           
-          $cur_login = $init_xml->user[$i]->login;
-          $cur_password = $init_xml->user[$i]->password;
-          $cur_email = $init_xml->user[$i]->email;
-          $cur_name = $init_xml->user[$i]->name;
+          $cur_login = (string) $init_xml->user[$i]->login;
+          $cur_password = (string) $init_xml->user[$i]->password;
+          $cur_email = (string) $init_xml->user[$i]->email;
+          $cur_name = (string) $init_xml->user[$i]->name;
          
          /* Проверяем наличие пользователя с таким логином в таблице */
          $db->where ('login', $cur_login); 
